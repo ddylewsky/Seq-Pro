@@ -108,5 +108,4 @@ payments = {
         }
 }
 s2.nested_payments(payments)
-assert s.tranches == [0.0, 1500.0, 1500.0, 4000.0]
 print(s2.tranches)  # [0, 1555.56, 1555.56, 2888.89]
