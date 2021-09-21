@@ -1,12 +1,19 @@
-from typing import List
+from typing import List, Dict
 
 
 class AssetBacked:
 
     def __init__(self, tranches: List):
-        self.tranches = tranches
+        self.tranches = tranches  # an array of bond balances in order of seniority
 
     def sequential_payment(self, amount: float, specific_tranches: List = None) -> float:
+        """
+        Method to apply a principal payment in order of seniority.
+        :param amount: Amount of the payment
+        :param specific_tranches: a list of the indexes of the tranches to be included in the payment. If None all
+        tranches will be included
+        :return: The amount left after the payment is applied
+        """
         if specific_tranches is None:
             specific_tranches = [i for i in range(len(self.tranches))]  # include all tranches
         current_tranche = 0  # start with first tranche
@@ -25,6 +32,13 @@ class AssetBacked:
         return amount
 
     def pro_rata_payment(self, amount: float, specific_tranches: List = None) -> float:
+        """
+        Method to apply a pro-rata principal payment.
+        :param amount: Amount of payment
+        :param specific_tranches: a list of the indexes of the tranches to be included in the payment. If None all
+        tranches will be included
+        :return: The amount left after the payment is applied
+        """
         paid_amount = amount  # temp variable to keep track of payment amounts
         if specific_tranches is None:  # check if all tranches should be included
             total_balance = sum(self.tranches)
@@ -86,7 +100,6 @@ s2 = AssetBackedNested([1000.0, 2000.0, 2000.0, 4000.0])
 payments = {
     'paymentType': 'prorata',
     'amount': 2000.0,
-    # 'specificTranches': [0],
     'nextPayment':
         {
             'paymentType': 'sequential',
