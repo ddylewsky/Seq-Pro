@@ -1,3 +1,6 @@
+from typing import List
+
+
 class AssetBacked:
 
     def __init__(self, tranches: List):
