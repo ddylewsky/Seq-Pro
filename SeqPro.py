@@ -80,10 +80,11 @@ class AssetBackedNested(AssetBackedSequential, AssetBackedProRata):
         payment_type = payment_terms.get('paymentType')
 
         try:
-            amount_after_payments = payment_[payment_type](payment_amount, specific_tranches)  # payment_type is directly looked up by key to produce KeyError for payments_types not impplemented in the base class
+            amount_after_payments = payment_[payment_type](payment_amount, specific_tranches)  # payment_type is directly looked up by key to produce KeyError for payments_types not impplemented in the base classes
             next_payment = payment_terms.get('nextPayment')
 
             if next_payment is not None:
+                # process further payments carrying remainder amounts from previous payments into the next payment
                 next_payment['amount'] = next_payment.get('amount', 0) + amount_after_payments
                 self.nested_payments(next_payment)
             else:
