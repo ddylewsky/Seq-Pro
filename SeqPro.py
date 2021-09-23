@@ -79,11 +79,11 @@ class AssetBackedNested(AssetBackedSequential, AssetBackedProRata):
         payment_type = payment_terms.get('paymentType')
 
         try:
-            payment_[payment_type](payment_amount,
-                                   specific_tranches)  # payment_type is directly looked up by key to produce KeyError for payments_types not impplemented in the base classes
+            payment_[payment_type](payment_amount, specific_tranches)  # payment_type is directly looked up by key to
+            # produce KeyError for payments_types not implemented in the base classes
 
         except KeyError:
-            print(f"Payment Type <{payment_type}> Not available for this asset backed class the amount of "
+            print(f"Payment Type <{payment_type}> Not available for this asset backed class. The amount of "
                   f"<{payment_amount}> will be carried into next payment")
             self.payment_amount += payment_amount
 
