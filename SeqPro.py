@@ -5,11 +5,12 @@ class AssetBacked:
 
     def __init__(self, tranches: List[float]):
         self.tranches = tranches  # an array of bond balances in order of seniority
+        self.payment_amount = 0
 
 
 class AssetBackedSequential(AssetBacked):
 
-    def sequential_payment(self, amount: float, specific_tranches: List[int] = None) -> float:
+    def sequential_payment(self, amount: float, specific_tranches: List[int] = None) -> None:
         """
         Method to apply a principal payment in order of seniority.
         :param amount: Amount of the payment
@@ -17,27 +18,26 @@ class AssetBackedSequential(AssetBacked):
         tranches will be included
         :return: The amount left after the payment is applied
         """
+        self.payment_amount += amount
         if specific_tranches is None:
             specific_tranches = [i for i in range(len(self.tranches))]  # include all tranches
         current_tranche = 0  # start with first tranche
-        while amount > 0 and current_tranche <= len(specific_tranches) - 1:
+        while self.payment_amount > 0 and current_tranche <= len(specific_tranches) - 1:
             tranche_idx = specific_tranches[current_tranche]
             current_balance = self.tranches[tranche_idx]
-            if amount >= current_balance:
+            if self.payment_amount >= current_balance:
                 self.tranches[tranche_idx] = 0
-                amount -= current_balance
+                self.payment_amount -= current_balance
             else:
-                self.tranches[tranche_idx] -= amount
-                amount -= current_balance
+                self.tranches[tranche_idx] -= self.payment_amount
+                self.payment_amount -= current_balance
 
             current_tranche += 1
-
-        return amount
 
 
 class AssetBackedProRata(AssetBacked):
 
-    def pro_rata_payment(self, amount: float, specific_tranches: List[int] = None) -> float:
+    def pro_rata_payment(self, amount: float, specific_tranches: List[int] = None) -> None:
         """
         Method to apply a pro-rata principal payment.
         :param amount: Amount of payment
@@ -45,25 +45,24 @@ class AssetBackedProRata(AssetBacked):
         tranches will be included
         :return: The amount left after the payment is applied
         """
-        ## TODO add code to handle cases where payment is greater than total balances
-        paid_amount = amount  # temp variable to keep track of payment amounts
+        # TODO add code to handle cases where payment is greater than total balances
+        _total_amount = self.payment_amount + amount  # temp variable to keep track of payment amounts
+        self.payment_amount += amount
         if specific_tranches is None:  # check if all tranches should be included
             total_balance = sum(self.tranches)
             for idx in range(len(self.tranches)):
-                tranche_portion = self.tranches[idx] / total_balance * amount
+                tranche_portion = self.tranches[idx] / total_balance * _total_amount
                 self.tranches[idx] -= tranche_portion
-                paid_amount -= tranche_portion
+                self.payment_amount -= tranche_portion
         else:
             total_balance = 0
             for idx in range(len(self.tranches)):  # calculate total of included tranches
                 if idx in specific_tranches:
                     total_balance += self.tranches[idx]
             for idx in specific_tranches:
-                tranche_portion = self.tranches[idx] / total_balance * amount
+                tranche_portion = self.tranches[idx] / total_balance * _total_amount
                 self.tranches[idx] -= tranche_portion
-                paid_amount -= tranche_portion
-
-        return paid_amount
+                self.payment_amount -= tranche_portion
 
 
 class AssetBackedNested(AssetBackedSequential, AssetBackedProRata):
@@ -80,19 +79,21 @@ class AssetBackedNested(AssetBackedSequential, AssetBackedProRata):
         payment_type = payment_terms.get('paymentType')
 
         try:
-            amount_after_payments = payment_[payment_type](payment_amount, specific_tranches)  # payment_type is directly looked up by key to produce KeyError for payments_types not impplemented in the base classes
-            next_payment = payment_terms.get('nextPayment')
-
-            if next_payment is not None:
-                # process further payments carrying remainder amounts from previous payments into the next payment
-                next_payment['amount'] = next_payment.get('amount', 0) + amount_after_payments
-                self.nested_payments(next_payment)
-            else:
-                # no further payments
-                pass
+            payment_[payment_type](payment_amount,
+                                   specific_tranches)  # payment_type is directly looked up by key to produce KeyError for payments_types not impplemented in the base classes
 
         except KeyError:
-            print(f"Payment Type <{payment_type}> Not available for this asset backed class")
+            print(f"Payment Type <{payment_type}> Not available for this asset backed class the amount of "
+                  f"<{payment_amount}> will be carried into next payment")
+            self.payment_amount += payment_amount
+
+        next_payment = payment_terms.get('nextPayment')
+        if next_payment is not None:
+            # process further payments carrying remainder amounts from previous payments into the next payment
+            self.nested_payments(next_payment)
+        else:
+            # no further payments
+            pass
 
 
 s = AssetBackedNested([1000.0, 2000.0, 2000.0, 4000.0])
@@ -126,7 +127,6 @@ payments = {
 s2.nested_payments(payments)
 print(s2.tranches)  # [0, 1555.56, 1555.56, 2888.89]
 
-
 s3 = AssetBackedNested([1000.0, 2000.0, 2000.0, 4000.0])
 payments = {
     'paymentType': 'creditEvent',
@@ -139,4 +139,5 @@ payments = {
         }
 }
 s3.nested_payments(payments)
-print(s3.tranches)  # No change as payment type is not defined [1000.0, 2000.0, 2000.0, 4000.0]
+print(s3.tranches)  # First payment credit event does not get processed and the 2,000 payment is carried into
+# the sequential payment to the first and last tranches [0.0, 2000.0, 2000.0, 2000.0]
