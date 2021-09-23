@@ -6,6 +6,9 @@ class AssetBacked:
     def __init__(self, tranches: List[float]):
         self.tranches = tranches  # an array of bond balances in order of seniority
 
+
+class AssetBackedSequential(AssetBacked):
+
     def sequential_payment(self, amount: float, specific_tranches: List[int] = None) -> float:
         """
         Method to apply a principal payment in order of seniority.
@@ -30,6 +33,9 @@ class AssetBacked:
             current_tranche += 1
 
         return amount
+
+
+class AssetBackedProRata(AssetBacked):
 
     def pro_rata_payment(self, amount: float, specific_tranches: List[int] = None) -> float:
         """
@@ -60,24 +66,32 @@ class AssetBacked:
         return paid_amount
 
 
-class AssetBackedNested(AssetBacked):
+class AssetBackedNested(AssetBackedSequential, AssetBackedProRata):
 
     def nested_payments(self, payment_terms: Dict) -> None:
 
+        payment_ = {
+            'sequential': self.sequential_payment,
+            'prorata': self.pro_rata_payment
+        }
+
         payment_amount = payment_terms.get('amount')
         specific_tranches = payment_terms.get('specificTranches')
+        payment_type = payment_terms.get('paymentType')
 
-        if payment_terms.get('paymentType') == 'sequential':
-            amount_after_payments = self.sequential_payment(payment_amount, specific_tranches)
-        else:
-            amount_after_payments = self.pro_rata_payment(payment_amount, specific_tranches)
+        try:
+            amount_after_payments = payment_[payment_type](payment_amount, specific_tranches)  # payment_type is directly looked up by key to produce KeyError for payments_types not impplemented in the base class
+            next_payment = payment_terms.get('nextPayment')
 
-        next_payment = payment_terms.get('nextPayment')
+            if next_payment is not None:
+                next_payment['amount'] = next_payment.get('amount', 0) + amount_after_payments
+                self.nested_payments(next_payment)
+            else:
+                # no further payments
+                pass
 
-        if next_payment is not None:
-            next_amount = next_payment.get('amount', 0)
-            next_payment['amount'] = next_amount + amount_after_payments
-            self.nested_payments(next_payment)
+        except KeyError:
+            print(f"Payment Type <{payment_type}> Not available for this asset backed class")
 
 
 s = AssetBackedNested([1000.0, 2000.0, 2000.0, 4000.0])
@@ -110,3 +124,18 @@ payments = {
 }
 s2.nested_payments(payments)
 print(s2.tranches)  # [0, 1555.56, 1555.56, 2888.89]
+
+
+s3 = AssetBackedNested([1000.0, 2000.0, 2000.0, 4000.0])
+payments = {
+    'paymentType': 'creditEvent',
+    'amount': 2000.0,
+    'nextPayment':
+        {
+            'paymentType': 'sequential',
+            'amount': 1000,
+            'specificTranches': [0, 3]
+        }
+}
+s3.nested_payments(payments)
+print(s3.tranches)  # No change as payment type is not defined [1000.0, 2000.0, 2000.0, 4000.0]
