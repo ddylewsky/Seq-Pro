@@ -3,10 +3,10 @@ from typing import List, Dict
 
 class AssetBacked:
 
-    def __init__(self, tranches: List):
+    def __init__(self, tranches: List[float]):
         self.tranches = tranches  # an array of bond balances in order of seniority
 
-    def sequential_payment(self, amount: float, specific_tranches: List = None) -> float:
+    def sequential_payment(self, amount: float, specific_tranches: List[int] = None) -> float:
         """
         Method to apply a principal payment in order of seniority.
         :param amount: Amount of the payment
@@ -31,7 +31,7 @@ class AssetBacked:
 
         return amount
 
-    def pro_rata_payment(self, amount: float, specific_tranches: List = None) -> float:
+    def pro_rata_payment(self, amount: float, specific_tranches: List[int] = None) -> float:
         """
         Method to apply a pro-rata principal payment.
         :param amount: Amount of payment
@@ -39,6 +39,7 @@ class AssetBacked:
         tranches will be included
         :return: The amount left after the payment is applied
         """
+        ## TODO add code to handle cases where payment is greater than total balances
         paid_amount = amount  # temp variable to keep track of payment amounts
         if specific_tranches is None:  # check if all tranches should be included
             total_balance = sum(self.tranches)
