@@ -5,7 +5,7 @@ class AssetBacked:
 
     def __init__(self, tranches: List[float]):
         self.tranches = tranches  # an array of bond balances in order of seniority
-        self.payment_amount = 0
+        self.payment_amount = 0.0
 
 
 class AssetBackedSequential(AssetBacked):
